@@ -6,190 +6,258 @@
   <title>PromoControl - Controle de Promotores</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
 </head>
 <body class="bg-slate-900 text-slate-100 antialiased min-h-screen">
-  <div id="root"></div>
+
+  <!-- TOPBAR / HEADER -->
+  <header class="bg-slate-950 border-b border-slate-800 p-4 sticky top-0 z-40 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white shadow-md">
+        <i class="fas fa-clipboard-check"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-base md:text-lg leading-tight">PromoControl</h1>
+        <span id="status-firebase" class="text-xs text-emerald-400 font-medium flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Firebase Conectado
+        </span>
+      </div>
+    </div>
+
+    <!-- CONTROLES LOJA E ADMIN -->
+    <div class="flex items-center gap-2">
+      <select id="seletor-loja" onchange="mudarLoja(this.value)" class="bg-indigo-950 border border-indigo-700/60 text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-semibold focus:outline-none">
+        <option value="Loja 01">Loja 01</option>
+        <option value="Loja 02">Loja 02</option>
+        <option value="Loja 03">Loja 03</option>
+        <option value="Todas">Todas as Lojas (Admin)</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="p-4 md:p-6 max-w-4xl mx-auto w-full space-y-6">
+
+    <!-- 1. PAINEL DE REGISTRO DE ENTRADA -->
+    <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-5 shadow-xl">
+      <h3 class="font-bold text-slate-100 mb-1 flex items-center gap-2 text-base">
+        <i class="fas fa-right-to-bracket text-indigo-400"></i> Registrar Entrada de Promotor
+      </h3>
+      <p class="text-xs text-slate-400 mb-4">Selecione o promotor cadastrado para iniciar o atendimento na loja.</p>
+      
+      <div class="flex flex-col md:flex-row gap-3">
+        <select id="select-promotores-entrada" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs md:text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+          <option value="">Carregando promotores...</option>
+        </select>
+        <button onclick="registrarEntrada()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl text-xs md:text-sm shadow-lg transition-all">
+          Registrar Entrada
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. LISTA: PROMOTORES EM ATENDIMENTO -->
+    <div class="space-y-3">
+      <h3 class="font-bold text-slate-200 text-sm flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        Promotores em Atendimento Agora (<span id="count-atendimento">0</span>)
+      </h3>
+      <div id="lista-atendimento" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <!-- Renderizado dinamicamente -->
+      </div>
+    </div>
+
+    <!-- 3. GERENCIAR PROMOTORES CADASTRADOS -->
+    <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-4">
+      <h3 class="font-bold text-slate-100 flex items-center gap-2 text-base border-b border-slate-700 pb-3">
+        <i class="fas fa-users text-indigo-400"></i> Promotores Cadastrados (<span id="count-promotores">0</span>)
+      </h3>
+
+      <form onsubmit="cadastrarPromotor(event)" class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-700/50">
+        <input type="text" id="novo-promotor-nome" placeholder="Nome do Promotor" required class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
+        <input type="text" id="novo-promotor-empresa" placeholder="Empresa / Fornecedor" class="bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-lg text-xs shadow">
+          + Cadastrar Promotor
+        </button>
+      </form>
+
+      <div id="lista-promotores" class="divide-y divide-slate-700/50 max-h-60 overflow-y-auto pr-1">
+        <!-- Renderizado dinamicamente -->
+      </div>
+    </div>
+
+    <!-- 4. GERENCIAR RESPONSÁVEIS CADASTRADOS -->
+    <div class="bg-slate-800/90 border border-slate-700 rounded-2xl p-5 shadow-xl space-y-4">
+      <h3 class="font-bold text-slate-100 flex items-center gap-2 text-base border-b border-slate-700 pb-3">
+        <i class="fas fa-user-shield text-indigo-400"></i> Responsáveis Cadastrados (<span id="count-responsaveis">0</span>)
+      </h3>
+
+      <form onsubmit="cadastrarResponsavel(event)" class="flex flex-col md:flex-row gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-700/50">
+        <input type="text" id="novo-responsavel-nome" placeholder="Nome do Responsável / Encarregado" required class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-lg text-xs shadow">
+          + Cadastrar Responsável
+        </button>
+      </form>
+
+      <div id="lista-responsaveis" class="divide-y divide-slate-700/50 max-h-60 overflow-y-auto pr-1">
+        <!-- Renderizado dinamicamente -->
+      </div>
+    </div>
+
+  </main>
 
   <script>
-    const firebaseConfig = {
-      databaseURL: "https://apppoupe-f28c6-default-rtdb.firebaseio.com"
-    };
-
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
+    const firebaseConfig = { databaseURL: "https://apppoupe-f28c6-default-rtdb.firebaseio.com" };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const e = React.createElement;
 
-    function App() {
-      const [menuAberto, setMenuAberto] = React.useState(false);
-      const [seletorAberto, setSeletorAberto] = React.useState(false);
-      const [abaAtiva, setAbaAtiva] = React.useState('visitas');
-      const [lojaFiltro, setLojaFiltro] = React.useState('Todas');
+    let lojaAtual = 'Loja 01';
+    let todosPromotores = [];
+    let todosResponsaveis = [];
+    let todasVisitas = [];
+
+    const host = window.location.hostname;
+    if (host.includes('loja2')) lojaAtual = 'Loja 02';
+    else if (host.includes('loja3')) lojaAtual = 'Loja 03';
+    else if (host.includes('loja1')) lojaAtual = 'Loja 01';
+    
+    document.getElementById('seletor-loja').value = lojaAtual;
+
+    function mudarLoja(val) {
+      lojaAtual = val;
+      renderizarTudo();
+    }
+
+    db.ref('promotores').on('value', snap => {
+      const val = snap.val();
+      todosPromotores = val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : [];
+      renderizarTudo();
+    });
+
+    db.ref('responsaveis').on('value', snap => {
+      const val = snap.val();
+      todosResponsaveis = val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : [];
+      renderizarTudo();
+    });
+
+    db.ref('visitas').on('value', snap => {
+      const val = snap.val();
+      todasVisitas = val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : [];
+      renderizarTudo();
+    });
+
+    function renderizarTudo() {
+      const promotoresFiltrados = todosPromotores.filter(p => lojaAtual === 'Todas' || !p.loja || p.loja === lojaAtual);
+      const responsaveisFiltrados = todosResponsaveis.filter(r => lojaAtual === 'Todas' || !r.loja || r.loja === lojaAtual);
+      const visitasAtivas = todasVisitas.filter(v => !v.dataSaida && (lojaAtual === 'Todas' || v.loja === lojaAtual));
+
+      document.getElementById('count-atendimento').innerText = visitasAtivas.length;
+      document.getElementById('count-promotores').innerText = promotoresFiltrados.length;
+      document.getElementById('count-responsaveis').innerText = responsaveisFiltrados.length;
+
+      const selectEntrada = document.getElementById('select-promotores-entrada');
+      selectEntrada.innerHTML = `<option value="">-- Selecione o Promotor (${promotoresFiltrados.length} disponíveis) --</option>`;
+      promotoresFiltrados.forEach(p => {
+        selectEntrada.innerHTML += `<option value="${p.id}">${p.nome} (${p.empresa || 'Sem empresa'}) - ${p.loja || 'Loja 01'}</option>`;
+      });
+
+      const divAtendimento = document.getElementById('lista-atendimento');
+      if (visitasAtivas.length === 0) {
+        divAtendimento.innerHTML = `<div class="col-span-2 bg-slate-800/40 border border-slate-800 rounded-xl p-6 text-center text-slate-500 text-xs">Nenhum promotor em atendimento no momento.</div>`;
+      } else {
+        divAtendimento.innerHTML = visitasAtivas.map(v => `
+          <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 flex justify-between items-center shadow-md">
+            <div>
+              <p class="font-bold text-slate-100 text-sm">${v.promotorNome}</p>
+              <p class="text-xs text-indigo-400">${v.empresa || 'Fornecedor'} • ${v.loja}</p>
+              <span class="text-[10px] text-slate-400">🕒 Entrada: ${v.dataEntrada}</span>
+            </div>
+            <button onclick="registrarSaida('${v.id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-lg text-xs shadow">Registrar Saída</button>
+          </div>
+        `).join('');
+      }
+
+      const divPromotores = document.getElementById('lista-promotores');
+      if (promotoresFiltrados.length === 0) {
+        divPromotores.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Nenhum promotor cadastrado para esta loja.</p>`;
+      } else {
+        divPromotores.innerHTML = promotoresFiltrados.map(p => `
+          <div class="py-2.5 flex justify-between items-center">
+            <div>
+              <p class="font-semibold text-slate-200 text-xs">${p.nome}</p>
+              <p class="text-[11px] text-slate-400">${p.empresa || 'Empresa não informada'} • ${p.loja || 'Loja 01'}</p>
+            </div>
+            <span class="text-[10px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded-full font-medium border border-emerald-700/50">Ativo</span>
+          </div>
+        `).join('');
+      }
+
+      const divResponsaveis = document.getElementById('lista-responsaveis');
+      if (responsaveisFiltrados.length === 0) {
+        divResponsaveis.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Nenhum responsável cadastrado para esta loja.</p>`;
+      } else {
+        divResponsaveis.innerHTML = responsaveisFiltrados.map(r => `
+          <div class="py-2.5 flex justify-between items-center">
+            <p class="font-semibold text-slate-200 text-xs">${r.nome}</p>
+            <span class="text-[10px] bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded-full font-medium border border-indigo-700/50">${r.loja || 'Loja 01'}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function registrarEntrada() {
+      const id = document.getElementById('select-promotores-entrada').value;
+      if (!id) return alert('Selecione um promotor na lista!');
+      const p = todosPromotores.find(x => x.id === id);
       
-      const [isAdmin, setIsAdmin] = React.useState(true);
-      const [modalAdmin, setModalAdmin] = React.useState(false);
-      const [senhaInput, setSenhaInput] = React.useState('');
+      db.ref('visitas').push({
+        promotorId: p.id,
+        promotorNome: p.nome,
+        empresa: p.empresa || '',
+        loja: lojaAtual === 'Todas' ? (p.loja || 'Loja 01') : lojaAtual,
+        dataEntrada: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      alert(`Entrada de ${p.nome} registrada com sucesso!`);
+    }
 
-      const [promotores, setPromotores] = React.useState([]);
-      const [responsaveis, setResponsaveis] = React.useState([]);
-      const [visitas, setVisitas] = React.useState([]);
-      const [busca, setBusca] = React.useState('');
-      const [promotorSelecionado, setPromotorSelecionado] = React.useState('');
+    function registrarSaida(visitaId) {
+      db.ref(`visitas/${visitaId}`).update({
+        dataSaida: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    }
 
-      // Form Novos Cadastros
-      const [novoPromotor, setNovoPromotor] = React.useState({ nome: '', empresa: '', loja: 'Loja 01' });
-      const [novoResponsavel, setNovoResponsavel] = React.useState({ nome: '', loja: 'Loja 01' });
+    function cadastrarPromotor(e) {
+      e.preventDefault();
+      const nome = document.getElementById('novo-promotor-nome').value;
+      const empresa = document.getElementById('novo-promotor-empresa').value;
+      
+      db.ref('promotores').push({
+        nome: nome,
+        empresa: empresa || 'Geral',
+        loja: lojaAtual === 'Todas' ? 'Loja 01' : lojaAtual,
+        ativo: true
+      });
 
-      React.useEffect(() => {
-        const host = window.location.hostname;
-        if (host.includes('loja1')) {
-          setLojaFiltro('Loja 01');
-          setNovoPromotor(p => ({ ...p, loja: 'Loja 01' }));
-          setNovoResponsavel(r => ({ ...r, loja: 'Loja 01' }));
-        } else if (host.includes('loja2')) {
-          setLojaFiltro('Loja 02');
-          setNovoPromotor(p => ({ ...p, loja: 'Loja 02' }));
-          setNovoResponsavel(r => ({ ...r, loja: 'Loja 02' }));
-        } else if (host.includes('loja3')) {
-          setLojaFiltro('Loja 03');
-          setNovoPromotor(p => ({ ...p, loja: 'Loja 03' }));
-          setNovoResponsavel(r => ({ ...r, loja: 'Loja 03' }));
-        }
+      document.getElementById('novo-promotor-nome').value = '';
+      document.getElementById('novo-promotor-empresa').value = '';
+      alert('Promotor cadastrado com sucesso!');
+    }
 
-        const promRef = db.ref('promotores');
-        const respRef = db.ref('responsaveis');
-        const visRef = db.ref('visitas');
+    function cadastrarResponsavel(e) {
+      e.preventDefault();
+      const nome = document.getElementById('novo-responsavel-nome').value;
+      
+      db.ref('responsaveis').push({
+        nome: nome,
+        loja: lojaAtual === 'Todas' ? 'Loja 01' : lojaAtual,
+        ativo: true
+      });
 
-        promRef.on('value', (s) => {
-          const val = s.val();
-          setPromotores(val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : []);
-        });
-
-        respRef.on('value', (s) => {
-          const val = s.val();
-          setResponsaveis(val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : []);
-        });
-
-        visRef.on('value', (s) => {
-          const val = s.val();
-          setVisitas(val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : []);
-        });
-
-        return () => {
-          promRef.off();
-          respRef.off();
-          visRef.off();
-        };
-      }, []);
-
-      const cadastrarPromotor = (evt) => {
-        evt.preventDefault();
-        if (!novoPromotor.nome) return alert('Digite o nome do promotor.');
-        db.ref('promotores').push({ ...novoPromotor, ativo: true });
-        setNovoPromotor({ nome: '', empresa: '', loja: lojaFiltro === 'Todas' ? 'Loja 01' : lojaFiltro });
-        alert('Promotor cadastrado com sucesso!');
-      };
-
-      const cadastrarResponsavel = (evt) => {
-        evt.preventDefault();
-        if (!novoResponsavel.nome) return alert('Digite o nome do responsável.');
-        db.ref('responsaveis').push({ ...novoResponsavel, ativo: true });
-        setNovoResponsavel({ nome: '', loja: lojaFiltro === 'Todas' ? 'Loja 01' : lojaFiltro });
-        alert('Responsável cadastrado com sucesso!');
-      };
-
-      const autenticarAdmin = (evt) => {
-        evt.preventDefault();
-        if (senhaInput === '1234' || senhaInput === 'admin') {
-          setIsAdmin(true);
-          setModalAdmin(false);
-          setSenhaInput('');
-          setLojaFiltro('Todas');
-        } else {
-          alert('Senha de administrador incorreta.');
-        }
-      };
-
-      const promotoresDisponiveis = promotores
-        .filter(p => lojaFiltro === 'Todas' || !p.loja || p.loja === lojaFiltro)
-        .filter(p => !busca || p.nome.toLowerCase().includes(busca.toLowerCase()));
-
-      const responsaveisDisponiveis = responsaveis.filter(r => 
-        lojaFiltro === 'Todas' || !r.loja || r.loja === lojaFiltro
-      );
-
-      const visitasAtivas = visitas.filter(v => 
-        !v.dataSaida && (lojaFiltro === 'Todas' || v.loja === lojaFiltro)
-      );
-
-      return e('div', { className: 'min-h-screen flex flex-col md:flex-row bg-slate-900 text-slate-100' },
-        
-        // --- MENU LATERAL ORIGINAL (DRAWER) ---
-        e('aside', { className: `fixed md:static inset-y-0 left-0 z-50 w-64 bg-slate-950 text-white transform ${menuAberto ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col justify-between p-4 border-r border-slate-800` },
-          e('div', null,
-            e('div', { className: 'flex items-center justify-between pb-6 border-b border-slate-800 mb-6' },
-              e('div', { className: 'flex items-center gap-3' },
-                e('div', { className: 'w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white text-xl shadow-lg' }, 'P'),
-                e('div', null,
-                  e('h2', { className: 'font-bold text-lg leading-none' }, 'PromoControl'),
-                  e('span', { className: 'text-xs text-indigo-400 font-medium' }, 'Gestão de Promotores')
-                )
-              ),
-              e('button', { onClick: () => setMenuAberto(false), className: 'md:hidden text-slate-400 hover:text-white' },
-                e('i', { className: 'fas fa-times text-xl' })
-              )
-            ),
-
-            e('nav', { className: 'space-y-1' },
-              [
-                { id: 'visitas', label: 'Controle de Ponto', icon: 'fa-clipboard-user' },
-                { id: 'promotores', label: 'Promotores', icon: 'fa-users' },
-                { id: 'responsaveis', label: 'Responsáveis', icon: 'fa-user-shield' },
-                { id: 'relatorios', label: 'Relatórios & Backup', icon: 'fa-chart-line' }
-              ].map(item =>
-                e('button', {
-                  key: item.id,
-                  onClick: () => { setAbaAtiva(item.id); setMenuAberto(false); },
-                  className: `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-colors ${abaAtiva === item.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`
-                },
-                  e('i', { className: `fas ${item.icon} w-5 text-center` }),
-                  item.label
-                )
-              )
-            )
-          ),
-
-          e('div', { className: 'pt-4 border-t border-slate-800 text-xs text-slate-500 text-center' },
-            'Firebase Sincronizado'
-          )
-        ),
-
-        // --- CONTEÚDO PRINCIPAL ---
-        e('main', { className: 'flex-1 flex flex-col min-w-0' },
-          
-          // HEADER COM MENU DROPDOWN DE LOJAS E ADMIN
-          e('header', { className: 'bg-slate-950 border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-40' },
-            e('div', { className: 'flex items-center gap-3' },
-              e('button', { onClick: () => setMenuAberto(true), className: 'md:hidden p-2 text-slate-400 hover:bg-slate-800 rounded-lg' },
-                e('i', { className: 'fas fa-bars text-xl' })
-              ),
-              e('h1', { className: 'font-bold text-slate-100 text-base md:text-lg capitalize' }, abaAtiva.replace('-', ' '))
-            ),
-
-            // SELETOR DROPDOWN DE LOJAS
-            e('div', { className: 'flex items-center gap-2 relative' },
-              e('div', { className: 'relative' },
-                e('button', {
-                  onClick: () => setSeletorAberto(!seletorAberto),
-                  className: 'bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-200 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all'
-                },
-                  e('span', { className: 'w-2 h-2 rounded-full bg-indigo-400' }),
-                  lojaFiltro === 'Todas' ? 'Todas as Lojas (Admin)' : lojaFiltro,
+      document.getElementById('novo-responsavel-nome').value = '';
+      alert('Responsável cadastrado com sucesso!');
+    }
+  </script>
+</body>
+</html>
