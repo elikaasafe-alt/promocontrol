@@ -3,223 +3,261 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>PromoControl - Controle de Promotores</title>
+  <title>PromoControl - Gestão de Promotores</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
-  <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
-    .card-dark { background-color: #1e293b; border: 1px solid #334155; }
-    .badge-loja { background-color: #1e1b4b; color: #a5b4fc; border: 1px solid #3730a3; }
-  </style>
 </head>
-<body class="min-h-screen pb-12">
-
-  <!-- HEADER NATIVO COM SELETOR ADMIN -->
-  <header class="bg-slate-950 border-b border-slate-800 p-4 sticky top-0 z-40 shadow-xl">
-    <div class="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3">
-      
-      <!-- LOGO E STATUS -->
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white text-lg shadow-lg">
-          P
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="font-bold text-lg text-white leading-none">PromoControl</h1>
-          </div>
-          <span class="text-xs text-emerald-400 font-medium flex items-center gap-1.5 mt-1">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Firebase Sincronizado (<span id="loja-label-status">Todas as Lojas</span>)
-          </span>
-        </div>
-      </div>
-
-      <!-- SELETOR DROPDOWN DE LOJAS & ADMIN -->
-      <div class="flex items-center gap-2">
-        <div class="relative">
-          <select id="seletor-loja" onchange="alterarLoja(this.value)" class="bg-indigo-950/80 border border-indigo-700/60 text-indigo-200 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none cursor-pointer">
-            <option value="Loja 01">Loja 01</option>
-            <option value="Loja 02">Loja 02</option>
-            <option value="Loja 03">Loja 03</option>
-            <option value="Todas" selected>Todas as Lojas (Admin)</option>
-          </select>
-        </div>
-
-        <button onclick="toggleAdminModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500 px-3.5 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5">
-          <i class="fas fa-shield-halved"></i> Admin
-        </button>
-      </div>
-
-    </div>
-  </header>
-
-  <!-- CONTEÚDO PRINCIPAL -->
-  <main class="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
-
-    <!-- REGISTRAR ENTRADA -->
-    <div class="card-dark rounded-2xl p-5 shadow-2xl">
-      <h3 class="font-bold text-slate-100 mb-1 flex items-center gap-2 text-base">
-        <i class="fas fa-right-to-bracket text-indigo-400"></i> Registrar Entrada de Promotor
-      </h3>
-      <p class="text-xs text-slate-400 mb-4">Clique abaixo para escolher o promotor (com busca rápida por Lupa).</p>
-
-      <div class="flex flex-col md:flex-row gap-3">
-        <select id="select-promotores" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs md:text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
-          <option value="">-- Selecione o Promotor (Carregando...) --</option>
-        </select>
-        <button onclick="confirmarEntrada()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl text-xs md:text-sm shadow-lg transition-all">
-          Registrar Entrada
-        </button>
-      </div>
-    </div>
-
-    <!-- PROMOTORES EM ATENDIMENTO -->
-    <div class="space-y-3">
-      <h3 class="font-bold text-slate-200 text-sm flex items-center gap-2">
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-        Promotores em Atendimento Agora (<span id="count-atendimento">0</span>)
-      </h3>
-      <div id="grid-atendimento" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <!-- Cards dinâmicos -->
-      </div>
-    </div>
-
-    <!-- PROMOTORES CADASTRADOS -->
-    <div class="card-dark rounded-2xl p-5 shadow-2xl space-y-4">
-      <h3 class="font-bold text-slate-100 text-base border-b border-slate-700/80 pb-3 flex items-center justify-between">
-        <span class="flex items-center gap-2"><i class="fas fa-users text-indigo-400"></i> Promotores Cadastrados</span>
-        <span id="count-promotores" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700">0</span>
-      </h3>
-
-      <form onsubmit="salvarPromotor(event)" class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-        <input type="text" id="input-promotor-nome" placeholder="Nome do Promotor" required class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
-        <input type="text" id="input-promotor-empresa" placeholder="Empresa / Fornecedor" class="bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow">
-          + Cadastrar Promotor
-        </button>
-      </form>
-
-      <div id="lista-promotores" class="divide-y divide-slate-800 max-h-60 overflow-y-auto pr-1"></div>
-    </div>
-
-    <!-- RESPONSÁVEIS CADASTRADOS -->
-    <div class="card-dark rounded-2xl p-5 shadow-2xl space-y-4">
-      <h3 class="font-bold text-slate-100 text-base border-b border-slate-700/80 pb-3 flex items-center justify-between">
-        <span class="flex items-center gap-2"><i class="fas fa-user-shield text-indigo-400"></i> Responsáveis Cadastrados</span>
-        <span id="count-responsaveis" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full border border-slate-700">0</span>
-      </h3>
-
-      <form onsubmit="salvarResponsavel(event)" class="flex flex-col md:flex-row gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
-        <input type="text" id="input-responsavel-nome" placeholder="Nome do Responsável / Encarregado" required class="flex-1 bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
-        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs shadow">
-          + Cadastrar Responsável
-        </button>
-      </form>
-
-      <div id="lista-responsaveis" class="divide-y divide-slate-800 max-h-60 overflow-y-auto pr-1"></div>
-    </div>
-
-  </main>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen">
+  <div id="root"></div>
 
   <script>
-    const firebaseConfig = { databaseURL: "https://apppoupe-f28c6-default-rtdb.firebaseio.com" };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const firebaseConfig = {
+      databaseURL: "https://apppoupe-f28c6-default-rtdb.firebaseio.com"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.database();
+    const e = React.createElement;
 
-    let lojaFiltro = 'Todas';
-    let promotores = [];
-    let responsaveis = [];
-    let visitas = [];
+    function App() {
+      const [menuAberto, setMenuAberto] = React.useState(false);
+      const [abaAtiva, setAbaAtiva] = React.useState('visitas');
+      const [lojaAtual, setLojaAtual] = React.useState('Loja 01');
+      
+      const [promotores, setPromotores] = React.useState([]);
+      const [responsaveis, setResponsaveis] = React.useState([]);
+      const [visitas, setVisitas] = React.useState([]);
+      const [busca, setBusca] = React.useState('');
 
-    // Detecção Automática de Loja via URL
-    const host = window.location.hostname;
-    if (host.includes('loja1')) lojaFiltro = 'Loja 01';
-    else if (host.includes('loja2')) lojaFiltro = 'Loja 02';
-    else if (host.includes('loja3')) lojaFiltro = 'Loja 03';
+      const [novoPromotor, setNovoPromotor] = React.useState({ nome: '', empresa: '', loja: 'Loja 01' });
+      const [novoResponsavel, setNovoResponsavel] = React.useState({ nome: '', loja: 'Loja 01' });
 
-    document.getElementById('seletor-loja').value = lojaFiltro;
+      React.useEffect(() => {
+        const host = window.location.hostname;
+        if (host.includes('loja2')) {
+          setLojaAtual('Loja 02');
+          setNovoPromotor(p => ({ ...p, loja: 'Loja 02' }));
+          setNovoResponsavel(r => ({ ...r, loja: 'Loja 02' }));
+        } else if (host.includes('loja3')) {
+          setLojaAtual('Loja 03');
+          setNovoPromotor(p => ({ ...p, loja: 'Loja 03' }));
+          setNovoResponsavel(r => ({ ...r, loja: 'Loja 03' }));
+        } else {
+          setLojaAtual('Loja 01');
+        }
 
-    function alterarLoja(val) {
-      lojaFiltro = val;
-      render();
+        const promRef = db.ref('promotores');
+        const respRef = db.ref('responsaveis');
+        const visRef = db.ref('visitas');
+
+        promRef.on('value', (s) => {
+          const val = s.val();
+          setPromotores(val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : []);
+        });
+
+        respRef.on('value', (s) => {
+          const val = s.val();
+          setResponsaveis(val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : []);
+        });
+
+        visRef.on('value', (s) => {
+          const val = s.val();
+          setVisitas(val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : []);
+        });
+
+        return () => {
+          promRef.off();
+          respRef.off();
+          visRef.off();
+        };
+      }, []);
+
+      const cadastrarPromotor = (evt) => {
+        evt.preventDefault();
+        if (!novoPromotor.nome) return alert('Informe o nome do promotor.');
+        db.ref('promotores').push({ ...novoPromotor, ativo: true });
+        setNovoPromotor({ nome: '', empresa: '', loja: lojaAtual });
+        alert('Promotor cadastrado!');
+      };
+
+      const cadastrarResponsavel = (evt) => {
+        evt.preventDefault();
+        if (!novoResponsavel.nome) return alert('Informe o nome do responsável.');
+        db.ref('responsaveis').push({ ...novoResponsavel, ativo: true });
+        setNovoResponsavel({ nome: '', loja: lojaAtual });
+        alert('Responsável cadastrado!');
+      };
+
+      const promotoresFiltrados = promotores
+        .filter(p => !p.loja || p.loja === lojaAtual || lojaAtual === 'Todas')
+        .filter(p => p.nome && p.nome.toLowerCase().includes(busca.toLowerCase()));
+
+      return e('div', { className: 'min-h-screen flex flex-col md:flex-row' },
+        
+        // SIDEBAR / MENU LATERAL
+        e('aside', { className: `fixed md:static inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform ${menuAberto ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-200 flex flex-col justify-between p-4 shadow-xl` },
+          e('div', null,
+            e('div', { className: 'flex items-center justify-between pb-6 border-b border-slate-800 mb-6' },
+              e('div', { className: 'flex items-center gap-3' },
+                e('div', { className: 'w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-slate-950 text-xl' }, 'P'),
+                e('div', null,
+                  e('h2', { className: 'font-bold text-lg leading-none' }, 'PromoControl'),
+                  e('span', { className: 'text-xs text-slate-400' }, 'Painel de Controle')
+                )
+              ),
+              e('button', { onClick: () => setMenuAberto(false), className: 'md:hidden text-slate-400' },
+                e('i', { className: 'fas fa-times text-xl' })
+              )
+            ),
+
+            e('nav', { className: 'space-y-1' },
+              [
+                { id: 'visitas', label: 'Controle de Ponto', icon: 'fa-clipboard-user' },
+                { id: 'promotores', label: 'Promotores', icon: 'fa-users' },
+                { id: 'responsaveis', label: 'Responsáveis', icon: 'fa-user-shield' },
+                { id: 'relatorios', label: 'Relatórios & Backup', icon: 'fa-chart-line' }
+              ].map(item =>
+                e('button', {
+                  key: item.id,
+                  onClick: () => { setAbaAtiva(item.id); setMenuAberto(false); },
+                  className: `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${abaAtiva === item.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`
+                },
+                  e('i', { className: `fas ${item.icon} w-5 text-center` }),
+                  item.label
+                )
+              )
+            )
+          ),
+          e('div', { className: 'pt-4 border-t border-slate-800 text-xs text-slate-500 text-center' }, 'Sincronizado via Firebase')
+        ),
+
+        // ÁREA PRINCIPAL
+        e('main', { className: 'flex-1 flex flex-col min-w-0' },
+          e('header', { className: 'bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-40' },
+            e('div', { className: 'flex items-center gap-3' },
+              e('button', { onClick: () => setMenuAberto(true), className: 'md:hidden p-2 text-slate-600' },
+                e('i', { className: 'fas fa-bars text-xl' })
+              ),
+              e('h1', { className: 'font-bold text-slate-800 text-lg capitalize' }, abaAtiva.replace('-', ' '))
+            ),
+            e('span', { className: 'bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full text-xs' }, lojaAtual)
+          ),
+
+          e('div', { className: 'p-4 md:p-6 flex-1 max-w-5xl mx-auto w-full' },
+            
+            // ABA: PROMOTORES
+            abaAtiva === 'promotores' && e('div', { className: 'space-y-6' },
+              e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+                e('h3', { className: 'font-bold text-slate-800 mb-4' }, 'Novo Promotor'),
+                e('form', { onSubmit: cadastrarPromotor, className: 'grid grid-cols-1 md:grid-cols-3 gap-3' },
+                  e('input', {
+                    type: 'text',
+                    placeholder: 'Nome',
+                    value: novoPromotor.nome,
+                    onChange: e => setNovoPromotor({ ...novoPromotor, nome: e.target.value }),
+                    className: 'p-3 border rounded-xl text-sm'
+                  }),
+                  e('input', {
+                    type: 'text',
+                    placeholder: 'Empresa',
+                    value: novoPromotor.empresa,
+                    onChange: e => setNovoPromotor({ ...novoPromotor, empresa: e.target.value }),
+                    className: 'p-3 border rounded-xl text-sm'
+                  }),
+                  e('button', { type: 'submit', className: 'bg-indigo-600 text-white font-semibold py-3 px-4 rounded-xl text-sm' }, 'Cadastrar')
+                )
+              ),
+
+              e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+                e('div', { className: 'flex justify-between items-center mb-4' },
+                  e('h3', { className: 'font-bold text-slate-800' }, 'Promotores Cadastrados'),
+                  e('input', {
+                    type: 'text',
+                    placeholder: 'Buscar...',
+                    value: busca,
+                    onChange: e => setBusca(e.target.value),
+                    className: 'p-2 border rounded-lg text-xs w-40'
+                  })
+                ),
+                e('div', { className: 'divide-y divide-slate-100' },
+                  promotoresFiltrados.map(p =>
+                    e('div', { key: p.id, className: 'py-3 flex justify-between items-center' },
+                      e('div', null,
+                        e('p', { className: 'font-semibold text-slate-800 text-sm' }, p.nome),
+                        e('p', { className: 'text-xs text-slate-500' }, p.empresa || 'Sem empresa')
+                      ),
+                      e('span', { className: 'text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full' }, 'Ativo')
+                    )
+                  )
+                )
+              )
+            ),
+
+            // ABA: RESPONSÁVEIS
+            abaAtiva === 'responsaveis' && e('div', { className: 'space-y-6' },
+              e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+                e('h3', { className: 'font-bold text-slate-800 mb-4' }, 'Novo Responsável'),
+                e('form', { onSubmit: cadastrarResponsavel, className: 'flex flex-col md:flex-row gap-3' },
+                  e('input', {
+                    type: 'text',
+                    placeholder: 'Nome do Responsável',
+                    value: novoResponsavel.nome,
+                    onChange: e => setNovoResponsavel({ ...novoResponsavel, nome: e.target.value }),
+                    className: 'flex-1 p-3 border rounded-xl text-sm'
+                  }),
+                  e('button', { type: 'submit', className: 'bg-indigo-600 text-white font-semibold py-3 px-6 rounded-xl text-sm' }, 'Cadastrar')
+                )
+              ),
+              e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+                e('h3', { className: 'font-bold text-slate-800 mb-4' }, 'Responsáveis Ativos'),
+                e('div', { className: 'divide-y divide-slate-100' },
+                  responsaveis.filter(r => !r.loja || r.loja === lojaAtual).map(r =>
+                    e('div', { key: r.id, className: 'py-3 flex justify-between items-center' },
+                      e('p', { className: 'font-semibold text-slate-800 text-sm' }, r.nome),
+                      e('span', { className: 'text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full' }, 'Autorizado')
+                    )
+                  )
+                )
+              )
+            ),
+
+            // ABA: PONTO / VISITAS
+            abaAtiva === 'visitas' && e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+              e('h3', { className: 'font-bold text-slate-800 mb-2' }, 'Controle de Presença'),
+              e('p', { className: 'text-xs text-slate-500' }, 'Acompanhe as presenças registradas na ' + lojaAtual)
+            ),
+
+            // ABA: RELATÓRIOS
+            abaAtiva === 'relatorios' && e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+              e('h3', { className: 'font-bold text-slate-800 mb-4' }, 'Relatórios e Backups'),
+              e('button', {
+                onClick: () => {
+                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ promotores, responsaveis, visitas }));
+                  const downloadAnchor = document.createElement('a');
+                  downloadAnchor.setAttribute("href", dataStr);
+                  downloadAnchor.setAttribute("download", `backup_${lojaAtual}.json`);
+                  document.body.appendChild(downloadAnchor);
+                  downloadAnchor.click();
+                  downloadAnchor.remove();
+                },
+                className: 'bg-slate-900 text-white px-4 py-2 text-xs rounded-xl'
+              }, 'Baixar Backup (.json)')
+            )
+          )
+        )
+      );
     }
 
-    // Escutadores do Firebase Realtime
-    db.ref('promotores').on('value', s => {
-      const v = s.val();
-      promotores = v ? Object.keys(v).map(k => ({ id: k, ...v[k] })) : [];
-      render();
-    });
-
-    db.ref('responsaveis').on('value', s => {
-      const v = s.val();
-      responsaveis = v ? Object.keys(v).map(k => ({ id: k, ...v[k] })) : [];
-      render();
-    });
-
-    db.ref('visitas').on('value', s => {
-      const v = s.val();
-      visitas = v ? Object.keys(v).map(k => ({ id: k, ...v[k] })) : [];
-      render();
-    });
-
-    function render() {
-      document.getElementById('loja-label-status').innerText = lojaFiltro === 'Todas' ? 'Todas as Lojas' : lojaFiltro;
-
-      const pFiltrados = promotores.filter(p => lojaFiltro === 'Todas' || !p.loja || p.loja === lojaFiltro);
-      const rFiltrados = responsaveis.filter(r => lojaFiltro === 'Todas' || !r.loja || r.loja === lojaFiltro);
-      const vAtivas = visitas.filter(v => !v.dataSaida && (lojaFiltro === 'Todas' || v.loja === lojaFiltro));
-
-      document.getElementById('count-atendimento').innerText = vAtivas.length;
-      document.getElementById('count-promotores').innerText = pFiltrados.length;
-      document.getElementById('count-responsaveis').innerText = rFiltrados.length;
-
-      // Select de Entrada
-      const sel = document.getElementById('select-promotores');
-      sel.innerHTML = `<option value="">-- Selecione o Promotor (${pFiltrados.length} disponíveis) --</option>`;
-      pFiltrados.forEach(p => {
-        sel.innerHTML += `<option value="${p.id}">${p.nome} (${p.empresa || 'Sem empresa'})</option>`;
-      });
-
-      // Visitas em Atendimento
-      const grid = document.getElementById('grid-atendimento');
-      if (vAtivas.length === 0) {
-        grid.innerHTML = `<div class="col-span-2 card-dark rounded-xl p-6 text-center text-slate-500 text-xs">Nenhum promotor em atendimento no momento.</div>`;
-      } else {
-        grid.innerHTML = vAtivas.map(v => `
-          <div class="card-dark rounded-xl p-4 flex items-center justify-between shadow-lg border-l-4 border-l-indigo-500">
-            <div>
-              <p class="font-bold text-slate-100 text-sm">${v.promotorNome}</p>
-              <p class="text-xs text-indigo-400 font-medium">${v.empresa \vert{}\vert{} 'PEPSICO'}${v.loja || 'LOJA 01'}</p>
-              <span class="text-[10px] text-slate-400 mt-1 block">🕒 Entrada: ${v.dataEntrada}</span>
-            </div>
-            <button onclick="registrarSaida('${v.id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs shadow-md transition-all">
-              Registrar Saída
-            </button>
-          </div>
-        `).join('');
-      }
-
-      // Lista Promotores
-      const listaP = document.getElementById('lista-promotores');
-      if (pFiltrados.length === 0) {
-        listaP.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Nenhum promotor cadastrado para esta loja.</p>`;
-      } else {
-        listaP.innerHTML = pFiltrados.map(p => `
-          <div class="py-2.5 flex justify-between items-center">
-            <div>
-              <p class="font-semibold text-slate-200 text-xs">${p.nome}</p>
-              <p class="text-[11px] text-slate-400">${p.empresa \vert{}\vert{} 'Geral'} •${p.loja || 'Loja 01'}</p>
-            </div>
-            <span class="text-[10px] bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded-full font-medium border border-emerald-700/50">Ativo</span>
-          </div>
-        `).join('');
-      }
-
-      // Lista Responsáveis
-      const listaR = document.getElementById('lista-responsaveis');
-      if (rFiltrados.length === 0) {
-        listaR.innerHTML = `<p class="text-xs text-slate-500 text
+    ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+  </script>
+</body>
+</html>
