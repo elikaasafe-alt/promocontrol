@@ -41,7 +41,6 @@
       const [novoResponsavel, setNovoResponsavel] = React.useState({ nome: '', loja: 'Loja 01' });
 
       React.useEffect(() => {
-        // Deteta a loja automaticamente pelo URL da Vercel se desejar, senão usa o seletor manual
         const host = window.location.hostname;
         if (host.includes('loja2')) setLojaSelecionada('Loja 02');
         else if (host.includes('loja3')) setLojaSelecionada('Loja 03');
@@ -62,8 +61,8 @@
         });
       }, []);
 
-      const cadastrarPromotor = (e) => {
-        e.preventDefault();
+      const cadastrarPromotor = (event) => {
+        event.preventDefault();
         if (!novoPromotor.nome) return alert('Digite o nome do promotor.');
         db.ref('promotores').push({
           nome: novoPromotor.nome,
@@ -75,8 +74,8 @@
         alert('Promotor cadastrado com sucesso!');
       };
 
-      const cadastrarResponsavel = (e) => {
-        e.preventDefault();
+      const cadastrarResponsavel = (event) => {
+        event.preventDefault();
         if (!novoResponsavel.nome) return alert('Digite o nome do responsável.');
         db.ref('responsaveis').push({
           nome: novoResponsavel.nome,
@@ -108,7 +107,6 @@
         });
       };
 
-      // Filtros por loja selecionada
       const promotoresDaLoja = promotores.filter(p => !p.loja || p.loja === lojaSelecionada);
       const visitasDaLoja = visitas.filter(v => (!v.loja || v.loja === lojaSelecionada));
       const visitasAtivas = visitasDaLoja.filter(v => !v.dataSaida);
@@ -117,7 +115,7 @@
       return e('div', { className: 'min-h-screen flex flex-col bg-slate-950 text-slate-100' },
         
         // TOPO / CABEÇALHO
-        e('header', { className: 'bg-slate-900 border-b border-slate-800 p-4 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-0 z-50' },
+        e('header', { className: 'bg-slate-900 border-b border-slate-800 p-4 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-0 z-50 shadow-md' },
           e('div', { className: 'flex items-center gap-3' },
             e('div', { className: 'w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-indigo-500/30' }, 'P'),
             e('div', null,
@@ -140,7 +138,7 @@
             )
           ),
 
-          // ABAS DE NAVEGAÇÃO SUPERIOR
+          // MENU DE ABAS SUPERIOR (FUNCIONANDO CORRETAMENTE)
           e('nav', { className: 'flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800' },
             [
               { id: 'ponto', label: 'Controle de Ponto', icon: 'fa-clipboard-user' },
@@ -150,7 +148,7 @@
               e('button', {
                 key: tab.id,
                 onClick: () => setAbaAtiva(tab.id),
-                className: `px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors ${abaAtiva === tab.id ? 'bg-slate-800 text-indigo-400' : 'text-slate-400 hover:text-slate-200'}`
+                className: `px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors ${abaAtiva === tab.id ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`
               },
                 e('i', { className: `fas ${tab.icon}` }),
                 tab.label
@@ -159,7 +157,7 @@
           )
         ),
 
-        // CORTE PRINCIPAL
+        // CONTEÚDO DINÂMICO CONFORME A ABA SELECIONADA
         e('main', { className: 'flex-1 max-w-5xl mx-auto w-full p-4 md:p-6 space-y-6' },
 
           // ABA 1: CONTROLE DE PONTO
@@ -170,7 +168,7 @@
               e('div', { className: 'flex flex-col md:flex-row gap-3' },
                 e('select', {
                   value: promotorEscolhido,
-                  onChange: e => setPromotorEscolhido(e.target.value),
+                  onChange: event => setPromotorEscolhido(event.target.value),
                   className: 'flex-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500'
                 },
                   e('option', { value: '' }, `-- Selecione o Promotor (${promotoresDaLoja.length} cadastrados nesta loja) --`),
@@ -185,7 +183,6 @@
               )
             ),
 
-            // ATENDIMENTOS ATIVOS
             e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl' },
               e('h3', { className: 'font-bold text-base text-white mb-4 flex items-center justify-between' },
                 `Promotores em Atendimento Agora (${lojaSelecionada})`,
@@ -209,7 +206,6 @@
                   )
             ),
 
-            // HISTÓRICO CONCLUÍDO
             e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl' },
               e('h3', { className: 'font-bold text-base text-white mb-4' }, `Histórico de Permanência Concluído (${lojaSelecionada})`),
               historicoVisitas.length === 0
@@ -235,7 +231,7 @@
               e('form', { onSubmit: cadastrarPromotor, className: 'grid grid-cols-1 md:grid-cols-4 gap-3' },
                 e('select', {
                   value: novoPromotor.loja,
-                  onChange: e => setNovoPromotor({ ...novoPromotor, loja: e.target.value }),
+                  onChange: event => setNovoPromotor({ ...novoPromotor, loja: event.target.value }),
                   className: 'bg-slate-950 border border-slate-800 p-3 rounded-xl text-sm text-slate-200'
                 },
                   e('option', { value: 'Loja 01' }, 'Loja 01'),
@@ -246,14 +242,14 @@
                   type: 'text',
                   placeholder: 'Nome do Promotor',
                   value: novoPromotor.nome,
-                  onChange: e => setNovoPromotor({ ...novoPromotor, nome: e.target.value }),
+                  onChange: event => setNovoPromotor({ ...novoPromotor, nome: event.target.value }),
                   className: 'bg-slate-950 border border-slate-800 p-3 rounded-xl text-sm text-slate-200'
                 }),
                 e('input', {
                   type: 'text',
                   placeholder: 'Empresa / Marca',
                   value: novoPromotor.empresa,
-                  onChange: e => setNovoPromotor({ ...novoPromotor, empresa: e.target.value }),
+                  onChange: event => setNovoPromotor({ ...novoPromotor, empresa: event.target.value }),
                   className: 'bg-slate-950 border border-slate-800 p-3 rounded-xl text-sm text-slate-200'
                 }),
                 e('button', { type: 'submit', className: 'bg-indigo-600 hover:bg-indigo-500 text-white font-bold p-3 rounded-xl text-sm shadow-lg' }, 'Salvar Promotor')
@@ -285,7 +281,7 @@
               e('form', { onSubmit: cadastrarResponsavel, className: 'grid grid-cols-1 md:grid-cols-3 gap-3' },
                 e('select', {
                   value: novoResponsavel.loja,
-                  onChange: e => setNovoResponsavel({ ...novoResponsavel, loja: e.target.value }),
+                  onChange: event => setNovoResponsavel({ ...novoResponsavel, loja: event.target.value }),
                   className: 'bg-slate-950 border border-slate-800 p-3 rounded-xl text-sm text-slate-200'
                 },
                   e('option', { value: 'Loja 01' }, 'Loja 01'),
@@ -296,7 +292,7 @@
                   type: 'text',
                   placeholder: 'Nome do Responsável',
                   value: novoResponsavel.nome,
-                  onChange: e => setNovoResponsavel({ ...novoResponsavel, nome: e.target.value }),
+                  onChange: event => setNovoResponsavel({ ...novoResponsavel, nome: event.target.value }),
                   className: 'bg-slate-950 border border-slate-800 p-3 rounded-xl text-sm text-slate-200'
                 }),
                 e('button', { type: 'submit', className: 'bg-indigo-600 hover:bg-indigo-500 text-white font-bold p-3 rounded-xl text-sm shadow-lg' }, 'Salvar Responsável')
