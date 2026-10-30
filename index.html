@@ -2,16 +2,19 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PromoControl</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>PromoControl - Gestão de Promotores</title>
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 antialiased">
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen">
   <div id="root"></div>
 
   <script>
@@ -23,81 +26,276 @@
       firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.database();
-
     const e = React.createElement;
 
     function App() {
-      const [lojaAtual, setLojaAtual] = React.useState('Loja 02');
+      const [menuAberto, setMenuAberto] = React.useState(false);
+      const [abaAtiva, setAbaAtiva] = React.useState('visitas');
+      const [lojaAtual, setLojaAtual] = React.useState('Loja 01');
+      
       const [promotores, setPromotores] = React.useState([]);
+      const [responsaveis, setResponsaveis] = React.useState([]);
+      const [visitas, setVisitas] = React.useState([]);
+      
       const [busca, setBusca] = React.useState('');
       const [carregando, setCarregando] = React.useState(true);
 
-      React.useEffect(() => {
-        const host = window.location.hostname;
-        if (host.includes('loja1')) setLojaAtual('Loja 01');
-        else if (host.includes('loja2')) setLojaAtual('Loja 02');
-        else if (host.includes('loja3')) setLojaAtual('Loja 03');
+      // Formulários
+      const [novoPromotor, setNovoPromotor] = React.useState({ nome: '', empresa: '', loja: 'Loja 01' });
+      const [novoResponsavel, setNovoResponsavel] = React.useState({ nome: '', loja: 'Loja 01' });
 
-        const ref = db.ref('promotores');
-        ref.on('value', (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            const lista = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-            setPromotores(lista);
-          } else {
-            setPromotores([]);
-          }
+      React.useEffect(() => {
+        // Detecção Automática da Loja pelo Subdomínio da Vercel
+        const host = window.location.hostname;
+        if (host.includes('loja2')) {
+          setLojaAtual('Loja 02');
+          setNovoPromotor(prev => ({ ...prev, loja: 'Loja 02' }));
+          setNovoResponsavel(prev => ({ ...prev, loja: 'Loja 02' }));
+        } else if (host.includes('loja3')) {
+          setLojaAtual('Loja 03');
+          setNovoPromotor(prev => ({ ...prev, loja: 'Loja 03' }));
+          setNovoResponsavel(prev => ({ ...prev, loja: 'Loja 03' }));
+        } else {
+          setLojaAtual('Loja 01');
+        }
+
+        // Sincronização Firebase Realtime
+        const promRef = db.ref('promotores');
+        const respRef = db.ref('responsaveis');
+        const visRef = db.ref('visitas');
+
+        promRef.on('value', (s) => {
+          const val = s.val();
+          setPromotores(val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : []);
+        });
+
+        respRef.on('value', (s) => {
+          const val = s.val();
+          setResponsaveis(val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : []);
+        });
+
+        visRef.on('value', (s) => {
+          const val = s.val();
+          setVisitas(val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : []);
           setCarregando(false);
         });
 
-        return () => ref.off();
+        return () => {
+          promRef.off();
+          respRef.off();
+          visRef.off();
+        };
       }, []);
+
+      const cadastrarPromotor = (evt) => {
+        evt.preventDefault();
+        if (!novoPromotor.nome) return alert('Informe o nome do promotor.');
+        db.ref('promotores').push({ ...novoPromotor, ativo: true });
+        setNovoPromotor({ nome: '', empresa: '', loja: lojaAtual });
+        alert('Promotor cadastrado com sucesso!');
+      };
+
+      const cadastrarResponsavel = (evt) => {
+        evt.preventDefault();
+        if (!novoResponsavel.nome) return alert('Informe o nome do responsável.');
+        db.ref('responsaveis').push({ ...novoResponsavel, ativo: true });
+        setNovoResponsavel({ nome: '', loja: lojaAtual });
+        alert('Responsável cadastrado com sucesso!');
+      };
 
       const promotoresFiltrados = promotores
         .filter(p => !p.loja || p.loja === lojaAtual || lojaAtual === 'Todas')
-        .filter(p => p.nome && p.nome.toLowerCase().includes(busca.toLowerCase()))
-        .sort((a, b) => a.nome.localeCompare(b.nome));
+        .filter(p => p.nome && p.nome.toLowerCase().includes(busca.toLowerCase()));
 
-      return e('div', { className: 'max-w-md mx-auto p-4 min-h-screen flex flex-col' },
-        e('header', { className: 'bg-indigo-900 text-white p-4 rounded-xl shadow-lg mb-4' },
-          e('div', { className: 'flex justify-between items-center' },
-            e('h1', { className: 'font-bold text-xl flex items-center gap-2' },
-              e('i', { className: 'fas fa-clipboard-check text-emerald-400' }),
-              'PromoControl'
+      return e('div', { className: 'min-h-screen flex flex-col md:flex-row' },
+        
+        // --- MENU LATERAL (DRAWER) ---
+        e('aside', { className: `fixed md:static inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transform ${menuAberto ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col justify-between p-4 shadow-xl` },
+          e('div', null,
+            e('div', { className: 'flex items-center justify-between pb-6 border-b border-slate-800 mb-6' },
+              e('div', { className: 'flex items-center gap-3' },
+                e('div', { className: 'w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-slate-950 text-xl' }, 'P'),
+                e('div', null,
+                  e('h2', { className: 'font-bold text-lg leading-none' }, 'PromoControl'),
+                  e('span', { className: 'text-xs text-slate-400' }, 'Gestão de Promotores')
+                )
+              ),
+              e('button', { onClick: () => setMenuAberto(false), className: 'md:hidden text-slate-400 hover:text-white' },
+                e('i', { className: 'fas fa-times text-xl' })
+              )
             ),
-            e('span', { className: 'bg-indigo-800 text-emerald-300 font-semibold px-3 py-1 rounded-full text-xs border border-indigo-700' },
-              lojaAtual
+
+            e('nav', { className: 'space-y-1' },
+              [
+                { id: 'visitas', label: 'Controle de Ponto', icon: 'fa-clipboard-user' },
+                { id: 'promotores', label: 'Promotores', icon: 'fa-users' },
+                { id: 'responsaveis', label: 'Responsáveis', icon: 'fa-user-shield' },
+                { id: 'relatorios', label: 'Relatórios & Backup', icon: 'fa-chart-line' }
+              ].map(item =>
+                e('button', {
+                  key: item.id,
+                  onClick: () => { setAbaAtiva(item.id); setMenuAberto(false); },
+                  className: `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${abaAtiva === item.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`
+                },
+                  e('i', { className: `fas ${item.icon} w-5 text-center` }),
+                  item.label
+                )
+              )
             )
+          ),
+
+          e('div', { className: 'pt-4 border-t border-slate-800 text-xs text-slate-500 text-center' },
+            'Sincronizado via Firebase'
           )
         ),
-        e('div', { className: 'mb-4 relative' },
-          e('input', {
-            type: 'text',
-            placeholder: 'Buscar promotor por nome...',
-            value: busca,
-            onChange: (evt) => setBusca(evt.target.value),
-            className: 'w-full p-3 pl-10 rounded-xl border border-slate-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
-          }),
-          e('i', { className: 'fas fa-search absolute left-3 top-3.5 text-slate-400' })
-        ),
-        carregando 
-          ? e('div', { className: 'text-center py-10 text-slate-500' },
-              e('i', { className: 'fas fa-circle-notch fa-spin text-2xl text-indigo-600 mb-2' }),
-              e('p', null, 'Carregando dados da ' + lojaAtual + '...')
+
+        // --- CONTEÚDO PRINCIPAL ---
+        e('main', { className: 'flex-1 flex flex-col min-w-0' },
+          
+          // HEADER DA APLICAÇÃO
+          e('header', { className: 'bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-40' },
+            e('div', { className: 'flex items-center gap-3' },
+              e('button', { onClick: () => setMenuAberto(true), className: 'md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg' },
+                e('i', { className: 'fas fa-bars text-xl' })
+              ),
+              e('h1', { className: 'font-bold text-slate-800 text-lg capitalize' }, abaAtiva.replace('-', ' '))
+            ),
+
+            e('div', { className: 'flex items-center gap-2' },
+              e('span', { className: 'bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full text-xs flex items-center gap-1.5 border border-emerald-200' },
+                e('span', { className: 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse' }),
+                lojaAtual
+              )
             )
-          : e('div', { className: 'space-y-3 flex-1' },
-              promotoresFiltrados.length === 0
-                ? e('div', { className: 'bg-white p-6 rounded-xl text-center text-slate-500 shadow-sm border' }, 'Nenhum promotor encontrado para esta loja.')
-                : promotoresFiltrados.map(p => 
-                    e('div', { key: p.id, className: 'bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center' },
-                      e('div', null,
-                        e('p', { className: 'font-semibold text-slate-800' }, p.nome),
-                        e('p', { className: 'text-xs text-slate-500' }, p.empresa || 'Empresa não informada')
-                      ),
-                      e('span', { className: 'text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800' }, 'Ativo')
-                    )
+          ),
+
+          // CORPO DAS ABAS
+          e('div', { className: 'p-4 md:p-6 flex-1 max-w-5xl mx-auto w-full' },
+            
+            // ABA: PROMOTORES
+            abaAtiva === 'promotores' && e('div', { className: 'space-y-6' },
+              e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+                e('h3', { className: 'font-bold text-slate-800 mb-4 flex items-center gap-2' },
+                  e('i', { className: 'fas fa-user-plus text-indigo-600' }),
+                  'Novo Promotor'
+                ),
+                e('form', { onSubmit: cadastrarPromotor, className: 'grid grid-cols-1 md:grid-cols-3 gap-3' },
+                  e('input', {
+                    type: 'text',
+                    placeholder: 'Nome do Promotor',
+                    value: novoPromotor.nome,
+                    onChange: e => setNovoPromotor({ ...novoPromotor, nome: e.target.value }),
+                    className: 'p-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                  }),
+                  e('input', {
+                    type: 'text',
+                    placeholder: 'Empresa / Fornecedor',
+                    value: novoPromotor.empresa,
+                    onChange: e => setNovoPromotor({ ...novoPromotor, empresa: e.target.value }),
+                    className: 'p-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                  }),
+                  e('button', { type: 'submit', className: 'bg-indigo-600 text-white font-semibold py-3 px-4 rounded-xl hover:bg-indigo-700 transition-colors text-sm' },
+                    'Cadastrar Promotor'
                   )
+                )
+              ),
+
+              e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+                e('div', { className: 'flex justify-between items-center mb-4' },
+                  e('h3', { className: 'font-bold text-slate-800' }, 'Promotores Cadastrados'),
+                  e('input', {
+                    type: 'text',
+                    placeholder: 'Filtrar...',
+                    value: busca,
+                    onChange: e => setBusca(e.target.value),
+                    className: 'p-2 border rounded-lg text-xs w-40'
+                  })
+                ),
+                e('div', { className: 'divide-y divide-slate-100' },
+                  promotoresFiltrados.length === 0
+                    ? e('p', { className: 'text-sm text-slate-500 text-center py-4' }, 'Nenhum promotor cadastrado nesta loja.')
+                    : promotoresFiltrados.map(p =>
+                        e('div', { key: p.id, className: 'py-3 flex justify-between items-center' },
+                          e('div', null,
+                            e('p', { className: 'font-semibold text-slate-800 text-sm' }, p.nome),
+                            e('p', { className: 'text-xs text-slate-500' }, p.empresa || 'Sem empresa')
+                          ),
+                          e('span', { className: 'text-xs bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full font-medium' }, 'Ativo')
+                        )
+                      )
+                )
+              )
+            ),
+
+            // ABA: RESPONSÁVEIS
+            abaAtiva === 'responsaveis' && e('div', { className: 'space-y-6' },
+              e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+                e('h3', { className: 'font-bold text-slate-800 mb-4 flex items-center gap-2' },
+                  e('i', { className: 'fas fa-user-shield text-indigo-600' }),
+                  'Novo Responsável'
+                ),
+                e('form', { onSubmit: cadastrarResponsavel, className: 'flex flex-col md:flex-row gap-3' },
+                  e('input', {
+                    type: 'text',
+                    placeholder: 'Nome do Responsável / Encarregado',
+                    value: novoResponsavel.nome,
+                    onChange: e => setNovoResponsavel({ ...novoResponsavel, nome: e.target.value }),
+                    className: 'flex-1 p-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500'
+                  }),
+                  e('button', { type: 'submit', className: 'bg-indigo-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-indigo-700 transition-colors text-sm' },
+                    'Cadastrar'
+                  )
+                )
+              ),
+
+              e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+                e('h3', { className: 'font-bold text-slate-800 mb-4' }, 'Responsáveis Ativos'),
+                e('div', { className: 'divide-y divide-slate-100' },
+                  responsaveis.filter(r => !r.loja || r.loja === lojaAtual).length === 0
+                    ? e('p', { className: 'text-sm text-slate-500 text-center py-4' }, 'Nenhum responsável cadastrado nesta loja.')
+                    : responsaveis.filter(r => !r.loja || r.loja === lojaAtual).map(r =>
+                        e('div', { key: r.id, className: 'py-3 flex justify-between items-center' },
+                          e('p', { className: 'font-semibold text-slate-800 text-sm' }, r.nome),
+                          e('span', { className: 'text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-medium' }, 'Autorizado')
+                        )
+                      )
+                )
+              )
+            ),
+
+            // ABA: VISITAS / PONTO
+            abaAtiva === 'visitas' && e('div', { className: 'space-y-4' },
+              e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200' },
+                e('h3', { className: 'font-bold text-slate-800 mb-2' }, 'Controle de Presença em Tempo Real'),
+                e('p', { className: 'text-xs text-slate-500 mb-4' }, 'Acompanhe os promotores presentes e registros da ' + lojaAtual + '.'),
+                carregando
+                  ? e('div', { className: 'text-center py-8 text-slate-400' }, 'Carregando registros...')
+                  : e('div', { className: 'bg-slate-50 p-4 rounded-xl text-center text-slate-500 text-sm border' }, 'Nenhuma visita em andamento no momento.')
+              )
+            ),
+
+            // ABA: RELATÓRIOS
+            abaAtiva === 'relatorios' && e('div', { className: 'bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4' },
+              e('h3', { className: 'font-bold text-slate-800' }, 'Relatórios e Backups'),
+              e('p', { className: 'text-xs text-slate-500' }, 'Exporte seus dados com segurança em arquivo .JSON a qualquer momento.'),
+              e('button', {
+                onClick: () => {
+                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ promotores, responsaveis, visitas }));
+                  const downloadAnchor = document.createElement('a');
+                  downloadAnchor.setAttribute("href", dataStr);
+                  downloadAnchor.setAttribute("download", `backup_promocontrol_${lojaAtual}.json`);
+                  document.body.appendChild(downloadAnchor);
+                  downloadAnchor.click();
+                  downloadAnchor.remove();
+                },
+                className: 'bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 hover:bg-slate-800'
+              },
+                e('i', { className: 'fas fa-download' }),
+                'Baixar Backup Geral (.json)'
+              )
             )
+          )
+        )
       );
     }
 
