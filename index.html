@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PromoControl - Painel de Controle</title>
+  <title>PromoControl - Gestão de Promotores</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -29,14 +29,13 @@
     const e = React.createElement;
 
     function App() {
-      const [isAdmin, setIsAdmin] = React.useState(true);
+      const [abaAtiva, setAbaAtiva] = React.useState('ponto');
       const [lojaAtual, setLojaAtual] = React.useState('Loja 01');
       
       const [promotores, setPromotores] = React.useState([]);
       const [visitas, setVisitas] = React.useState([]);
       const [promotorSelecionado, setPromotorSelecionado] = React.useState('');
 
-      // Form de cadastro
       const [novoNome, setNovoNome] = React.useState('');
       const [novaEmpresa, setNovaEmpresa] = React.useState('');
       const [novaLoja, setNovaLoja] = React.useState('Loja 01');
@@ -93,134 +92,179 @@
       const visitasAtivas = visitasDaLoja.filter(v => !v.dataSaida);
       const historicoVisitas = visitasDaLoja.filter(v => v.dataSaida);
 
-      return e('div', { className: 'min-h-screen flex flex-col bg-slate-950 text-slate-100' },
+      return e('div', { className: 'min-h-screen flex flex-col md:flex-row bg-slate-950 text-slate-100' },
         
-        // CABEÇALHO IDÊNTICO À VERSÃO QUE FUNCIONA
-        e('header', { className: 'bg-slate-900 border-b border-slate-800 p-4 flex items-center justify-between' },
-          e('div', { className: 'flex items-center gap-3' },
-            e('div', { className: 'w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg' }, 'P'),
-            e('div', null,
-              e('h1', { className: 'font-bold text-base leading-none text-white' }, 'PromoControl'),
-              e('span', { className: 'text-xs text-emerald-400 flex items-center gap-1 mt-1' },
-                e('span', { className: 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse' }),
-                'Firebase Sincronizado em Tempo Real'
+        // MENU LATERAL ESQUERDO
+        e('aside', { className: 'w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between p-4' },
+          e('div', null,
+            e('div', { className: 'flex items-center gap-3 pb-6 border-b border-slate-800 mb-6' },
+              e('div', { className: 'w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white text-lg shadow-lg' }, 'P'),
+              e('div', null,
+                e('h2', { className: 'font-bold text-base leading-none text-white' }, 'PromoControl'),
+                e('span', { className: 'text-xs text-slate-400' }, 'Painel de Gestão')
+              )
+            ),
+
+            // SELETOR DE LOJAS NO MENU LATERAL
+            e('div', { className: 'mb-6 space-y-2' },
+              e('label', { className: 'text-xs font-bold text-slate-400 uppercase tracking-wider' }, 'Selecionar Loja:'),
+              e('div', { className: 'grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800' },
+                ['Loja 01', 'Loja 02', 'Loja 03'].map(l =>
+                  e('button', {
+                    key: l,
+                    onClick: () => setLojaAtual(l),
+                    className: `py-1.5 rounded-lg text-[11px] font-bold transition-all ${lojaAtual === l ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'}`
+                  }, l.replace('Loja ', 'L'))
+                )
+              )
+            ),
+
+            // BOTÕES DE NAVEGAÇÃO DO MENU LATERAL
+            e('nav', { className: 'space-y-1' },
+              [
+                { id: 'ponto', label: 'Controle de Ponto', icon: 'fa-clipboard-user' },
+                { id: 'promotores', label: 'Cadastrar / Promotores', icon: 'fa-users' }
+              ].map(item =>
+                e('button', {
+                  key: item.id,
+                  onClick: () => setAbaAtiva(item.id),
+                  className: `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-xs transition-colors ${abaAtiva === item.id ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`
+                },
+                  e('i', { className: `fas ${item.icon} w-5 text-center` }),
+                  item.label
+                )
               )
             )
           ),
-
-          // SELETOR DE LOJAS NO TOPO
-          e('div', { className: 'flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800' },
-            ['Loja 01', 'Loja 02', 'Loja 03'].map(l =>
-              e('button', {
-                key: l,
-                onClick: () => setLojaAtual(l),
-                className: `px-3 py-1 rounded-lg text-xs font-bold transition-all ${lojaAtual === l ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`
-              }, l)
-            )
-          ),
-
-          e('button', {
-            onClick: () => setIsAdmin(!isAdmin),
-            className: 'bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-700 transition-colors'
-          }, isAdmin ? '👤 Modo Operação' : '🔒 Admin Ativo')
+          e('div', { className: 'pt-4 border-t border-slate-800 text-[11px] text-emerald-400 flex items-center gap-2' },
+            e('span', { className: 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse' }),
+            'Firebase Conectado'
+          )
         ),
 
-        // CONTEÚDO PRINCIPAL
-        e('main', { className: 'flex-1 max-w-4xl mx-auto w-full p-4 space-y-6' },
-
-          // SEÇÃO DE CADASTRO (EXIBIDA NO MODO ADMIN)
-          isAdmin && e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4' },
-            e('h3', { className: 'font-bold text-sm text-indigo-400 uppercase tracking-wider' }, '⚙️ Área Administrativa - Cadastrar Novo Promotor'),
-            e('form', { onSubmit: cadastrarPromotor, className: 'grid grid-cols-1 md:grid-cols-4 gap-3' },
-              e('select', {
-                value: novaLoja,
-                onChange: ev => setNovaLoja(ev.target.value),
-                className: 'bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs text-slate-200'
-              },
-                e('option', { value: 'Loja 01' }, 'Loja 01'),
-                e('option', { value: 'Loja 02' }, 'Loja 02'),
-                e('option', { value: 'Loja 03' }, 'Loja 03')
-              ),
-              e('input', {
-                type: 'text',
-                placeholder: 'Nome do Promotor',
-                value: novoNome,
-                onChange: ev => setNovoNome(ev.target.value),
-                className: 'bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs text-slate-200'
-              }),
-              e('input', {
-                type: 'text',
-                placeholder: 'Empresa / Marca',
-                value: novaEmpresa,
-                onChange: ev => setNovaEmpresa(ev.target.value),
-                className: 'bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs text-slate-200'
-              }),
-              e('button', { type: 'submit', className: 'bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-lg' }, 'Cadastrar Promotor')
-            )
-          ),
-
-          // REGISTRAR ENTRADA
-          e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl' },
-            e('h3', { className: 'font-bold text-sm text-white mb-1' }, `Registrar Entrada de Promotor (${lojaAtual})`),
-            e('p', { className: 'text-xs text-slate-400 mb-3' }, 'Selecione abaixo o promotor correspondente para iniciar o atendimento.'),
-            e('div', { className: 'flex flex-col md:flex-row gap-3' },
-              e('select', {
-                value: promotorSelecionado,
-                onChange: ev => setPromotorSelecionado(ev.target.value),
-                className: 'flex-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500'
-              },
-                e('option', { value: '' }, `-- Selecione o Promotor (${promotoresFiltrados.length} disponíveis na ${lojaAtual}) --`),
-                promotoresFiltrados.map(p =>
-                  e('option', { key: p.id, value: p.id }, `${p.nome} (${p.empresa || 'Sem empresa'})`)
-                )
-              ),
-              e('button', {
-                onClick: registrarEntrada,
-                className: 'bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl text-sm transition-all shadow-lg shadow-indigo-600/20'
-              }, 'Registrar Entrada')
-            )
-          ),
-
-          // ATENDIMENTOS ATIVOS
-          e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl' },
-            e('h3', { className: 'font-bold text-sm text-white mb-4 flex items-center justify-between' },
-              `Promotores em Atendimento Agora (${lojaAtual})`,
-              e('span', { className: 'text-xs bg-indigo-950 text-indigo-300 px-3 py-1 rounded-full border border-indigo-800' }, `${visitasAtivas.length} ativos`)
+        // ÁREA PRINCIPAL
+        e('main', { className: 'flex-1 flex flex-col min-w-0 p-4 md:p-8 space-y-6' },
+          
+          e('header', { className: 'bg-slate-900 border border-slate-800 p-4 rounded-2xl flex justify-between items-center shadow-lg' },
+            e('div', null,
+              e('h1', { className: 'font-bold text-lg text-white' }, abaAtiva === 'ponto' ? `Controle de Ponto (${lojaAtual})` : `Gestão de Promotores (${lojaAtual})`),
+              e('p', { className: 'text-xs text-slate-400' }, 'Gerencie os registros e cadastros por unidade de forma isolada.')
             ),
-            visitasAtivas.length === 0
-              ? e('p', { className: 'text-xs text-slate-500 text-center py-6' }, 'Nenhum promotor em atendimento no momento.')
-              : e('div', { className: 'space-y-3' },
-                  visitasAtivas.map(v =>
-                    e('div', { key: v.id, className: 'flex justify-between items-center p-3 bg-slate-950 rounded-xl border border-slate-800' },
-                      e('div', null,
-                        e('p', { className: 'font-bold text-slate-200 text-xs' }, v.promotorNome),
-                        e('p', { className: 'text-[11px] text-slate-400' }, `${v.empresa || 'Empresa'} • Entrada: ${v.dataEntrada}`)
-                      ),
-                      e('button', {
-                        onClick: () => registrarSaida(v.id),
-                        className: 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs'
-                      }, 'Registrar Saída')
-                    )
-                  )
-                )
+            e('span', { className: 'bg-indigo-950 text-indigo-300 border border-indigo-800 px-3 py-1 rounded-full text-xs font-bold' }, lojaAtual)
           ),
 
-          // HISTÓRICO
-          e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl' },
-            e('h3', { className: 'font-bold text-sm text-white mb-3' }, `Histórico de Permanência Concluído (${lojaAtual})`),
-            historicoVisitas.length === 0
-              ? e('p', { className: 'text-xs text-slate-500 text-center py-4' }, 'Nenhum registro concluído.')
-              : e('div', { className: 'space-y-2' },
-                  historicoVisitas.map(v =>
-                    e('div', { key: v.id, className: 'p-3 bg-slate-950 rounded-xl border border-slate-800 flex justify-between items-center text-xs' },
-                      e('div', null,
-                        e('span', { className: 'font-bold text-slate-200' }, v.promotorNome),
-                        e('p', { className: 'text-slate-400 text-[11px]' }, `${v.empresa} • Entrada: ${v.dataEntrada} | Saída: ${v.dataSaida}`)
-                      ),
-                      e('span', { className: 'bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded text-[10px] border border-emerald-800 font-semibold' }, 'Concluído')
+          // ABA: CONTROLE DE PONTO
+          abaAtiva === 'ponto' && e('div', { className: 'space-y-6' },
+            e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl' },
+              e('h3', { className: 'font-bold text-sm text-white mb-1' }, 'Registrar Entrada de Promotor'),
+              e('p', { className: 'text-xs text-slate-400 mb-3' }, 'Selecione abaixo o promotor correspondente para iniciar o atendimento.'),
+              e('div', { className: 'flex flex-col md:flex-row gap-3' },
+                e('select', {
+                  value: promotorSelecionado,
+                  onChange: ev => setPromotorSelecionado(ev.target.value),
+                  className: 'flex-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500'
+                },
+                  e('option', { value: '' }, `-- Selecione o Promotor (${promotoresFiltrados.length} disponíveis na ${lojaAtual}) --`),
+                  promotoresFiltrados.map(p =>
+                    e('option', { key: p.id, value: p.id }, `${p.nome} (${p.empresa || 'Sem empresa'})`)
+                  )
+                ),
+                e('button', {
+                  onClick: registrarEntrada,
+                  className: 'bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl text-sm transition-all shadow-lg shadow-indigo-600/20'
+                }, 'Registrar Entrada')
+              )
+            ),
+
+            e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl' },
+              e('h3', { className: 'font-bold text-sm text-white mb-4 flex items-center justify-between' },
+                `Promotores em Atendimento Agora`,
+                e('span', { className: 'text-xs bg-indigo-950 text-indigo-300 px-3 py-1 rounded-full border border-indigo-800' }, `${visitasAtivas.length} ativos`)
+              ),
+              visitasAtivas.length === 0
+                ? e('p', { className: 'text-xs text-slate-500 text-center py-6' }, 'Nenhum promotor em atendimento no momento.')
+                : e('div', { className: 'space-y-3' },
+                    visitasAtivas.map(v =>
+                      e('div', { key: v.id, className: 'flex justify-between items-center p-3 bg-slate-950 rounded-xl border border-slate-800' },
+                        e('div', null,
+                          e('p', { className: 'font-bold text-slate-200 text-xs' }, v.promotorNome),
+                          e('p', { className: 'text-[11px] text-slate-400' }, `${v.empresa || 'Empresa'} • Entrada: ${v.dataEntrada}`)
+                        ),
+                        e('button', {
+                          onClick: () => registrarSaida(v.id),
+                          className: 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs'
+                        }, 'Registrar Saída')
+                      )
                     )
                   )
-                )
+            ),
+
+            e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl' },
+              e('h3', { className: 'font-bold text-sm text-white mb-3' }, 'Histórico de Permanência Concluído'),
+              historicoVisitas.length === 0
+                ? e('p', { className: 'text-xs text-slate-500 text-center py-4' }, 'Nenhum registro concluído.')
+                : e('div', { className: 'space-y-2' },
+                    historicoVisitas.map(v =>
+                      e('div', { key: v.id, className: 'p-3 bg-slate-950 rounded-xl border border-slate-800 flex justify-between items-center text-xs' },
+                        e('div', null,
+                          e('span', { className: 'font-bold text-slate-200' }, v.promotorNome),
+                          e('p', { className: 'text-slate-400 text-[11px]' }, `${v.empresa} • Entrada: ${v.dataEntrada} | Saída: ${v.dataSaida}`)
+                        ),
+                        e('span', { className: 'bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded text-[10px] border border-emerald-800 font-semibold' }, 'Concluído')
+                      )
+                    )
+                  )
+            )
+          ),
+
+          // ABA: CADASTRAR / PROMOTORES
+          abaAtiva === 'promotores' && e('div', { className: 'space-y-6' },
+            e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl' },
+              e('h3', { className: 'font-bold text-sm text-white mb-3' }, 'Cadastrar Novo Promotor por Loja'),
+              e('form', { onSubmit: cadastrarPromotor, className: 'grid grid-cols-1 md:grid-cols-4 gap-3' },
+                e('select', {
+                  value: novaLoja,
+                  onChange: ev => setNovaLoja(ev.target.value),
+                  className: 'bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs text-slate-200'
+                },
+                  e('option', { value: 'Loja 01' }, 'Loja 01'),
+                  e('option', { value: 'Loja 02' }, 'Loja 02'),
+                  e('option', { value: 'Loja 03' }, 'Loja 03')
+                ),
+                e('input', {
+                  type: 'text',
+                  placeholder: 'Nome do Promotor',
+                  value: novoNome,
+                  onChange: ev => setNovoNome(ev.target.value),
+                  className: 'bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs text-slate-200'
+                }),
+                e('input', {
+                  type: 'text',
+                  placeholder: 'Empresa / Marca',
+                  value: novaEmpresa,
+                  onChange: ev => setNovaEmpresa(ev.target.value),
+                  className: 'bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs text-slate-200'
+                }),
+                e('button', { type: 'submit', className: 'bg-indigo-600 hover:bg-indigo-500 text-white font-bold p-3 rounded-xl text-xs shadow-lg' }, 'Salvar Promotor')
+              )
+            ),
+
+            e('div', { className: 'bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl' },
+              e('h3', { className: 'font-bold text-sm text-white mb-4' }, `Promotores Vinculados à ${lojaAtual}`),
+              promotoresFiltrados.length === 0
+                ? e('p', { className: 'text-xs text-slate-500 text-center py-6' }, 'Nenhum promotor cadastrado nesta loja.')
+                : e('div', { className: 'divide-y divide-slate-800' },
+                    promotoresFiltrados.map(p =>
+                      e('div', { key: p.id, className: 'py-3 flex justify-between items-center text-xs' },
+                        e('div', null,
+                          e('p', { className: 'font-bold text-slate-200 text-sm' }, p.nome),
+                          e('p', { className: 'text-slate-400' }, p.empresa || 'Sem empresa informada')
+                        ),
+                        e('span', { className: 'bg-indigo-950 text-indigo-400 px-2.5 py-1 rounded-full border border-indigo-800 font-semibold' }, p.loja || 'Loja 01')
+                      )
+                    )
+                  )
+            )
           )
 
         )
